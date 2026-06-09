@@ -3,6 +3,12 @@ from openai import OpenAI
 from azure.identity import DefaultAzureCredential, ChainedTokenCredential, AzureCliCredential, get_bearer_token_provider
 import json 
 import os
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
+
 
 def oai_client():
     return OpenAI()
@@ -33,4 +39,9 @@ def aoai_client(azure_config):
     api_version=api_version,
     )
     return client
- 
+
+def ollama_client():
+    return OpenAI(
+        base_url=OLLAMA_API_URL,
+        api_key='ollama'
+    )
