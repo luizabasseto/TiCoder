@@ -323,29 +323,31 @@ def get_or_create_codex_response(client, prompt_val, best_of_val, temp_val, echo
     config.mk_codex_query_cnt = config.mk_codex_query_cnt + 1
     num_prompt_tokens = config.count_tokens(prompt_val, config.MODEL)
     response = None
-    if num_prompt_tokens + (max_suggestions * max_tokens_val) > token_counter.token_limit:
-        allowed_suggestions = (token_counter.token_limit - num_prompt_tokens) // max_tokens_val
-        number_of_trials = ceil(max_suggestions / allowed_suggestions)
-    else:
-        number_of_trials = 1
-        allowed_suggestions = max_suggestions
-    print("Tokens in prompt: ", num_prompt_tokens, "\tMax suggestions : ", max_suggestions, "\tMax tokens per suggestion: ", max_tokens_val)
-    print(
-        f"Query will take {number_of_trials} trials with {allowed_suggestions} suggestions each" +\
-        f" to generate {max_suggestions} suggestions, with {max_suggestions - (number_of_trials - 1) * allowed_suggestions} suggestions in the last trial."
-    )
+    # if num_prompt_tokens + (max_suggestions * max_tokens_val) > token_counter.token_limit:
+    #     allowed_suggestions = (token_counter.token_limit - num_prompt_tokens) // max_tokens_val
+    #     number_of_trials = ceil(max_suggestions / allowed_suggestions)
+    # else:
+    #     number_of_trials = 1
+    #     allowed_suggestions = max_suggestions
+    # print("Tokens in prompt: ", num_prompt_tokens, "\tMax suggestions : ", max_suggestions, "\tMax tokens per suggestion: ", max_tokens_val)
+    # print(
+    #     f"Query will take {number_of_trials} trials with {allowed_suggestions} suggestions each" +\
+    #     f" to generate {max_suggestions} suggestions, with {max_suggestions - (number_of_trials - 1) * allowed_suggestions} suggestions in the last trial."
+    # )
+    allowed_suggestions = max_suggestions
+    
     while response is None or len(response.choices) < max_suggestions:
-        if response is not None:
-            allowed_suggestions = min(allowed_suggestions, max_suggestions - len(response.choices))
-        while token_counter.is_over_limit(num_prompt_tokens + allowed_suggestions * max_tokens_val):
-            print(f"Need {num_prompt_tokens + allowed_suggestions * max_tokens_val} token quota. Sleeping 5 seconds for token counter reset.")
-            time.sleep(5)
+        # if response is not None:
+        #     allowed_suggestions = min(allowed_suggestions, max_suggestions - len(response.choices))
+        # while token_counter.is_over_limit(num_prompt_tokens + allowed_suggestions * max_tokens_val):
+        #     print(f"Need {num_prompt_tokens + allowed_suggestions * max_tokens_val} token quota. Sleeping 5 seconds for token counter reset.")
+        #     time.sleep(5)
         try:
             query_response = client.chat.completions.create(
                 model=config.MODEL,
                 messages=prompt_val,
                 max_tokens=max_tokens_val,
-                n=allowed_suggestions,
+                n=1, #mudou aqui pq ollama gera apenas 1 por vez e não multiplos
                 temperature=temp_val,
             )
         except openai.RateLimitError as e:
@@ -363,10 +365,16 @@ def get_or_create_codex_response(client, prompt_val, best_of_val, temp_val, echo
         else:
             response.choices += query_response.choices
         
-        token_counter.add_tokens(query_response.usage.total_tokens)
+        if hasattr(query_response, 'usage') and query_response.usage is not None:
+            token_counter.add_tokens(query_response.usage.total_tokens)
+            
         print("Current Tokens:, ", query_response.usage.total_tokens, "\tUsed tokens: ",
             token_counter.used_tokens, "\tToken limit: ", token_counter.token_limit,
             "\tSo far generated: ", len(response.choices))
+    # try:
+    #     dict_response = response.model_dump()
+    # except AttributeError:
+    #     dict_response = response
     v = (k, response, current_time)
     config.codex_query_response_log[str(k)] = v
     return response

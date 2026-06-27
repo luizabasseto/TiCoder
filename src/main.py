@@ -10,7 +10,7 @@ from tqdm import tqdm
 import query_chat_model
 from pebble import ProcessExpired, ProcessPool
 import model_setup
-from model_setup import oai_client, aoai_client
+from model_setup import oai_client, aoai_client, ollama_client
 import config
 import dataset_io as dio
 import dynamic_mutation as dm
@@ -268,10 +268,11 @@ def parse_command_line_args():
     global client
 
     qm = query_chat_model
-    if args.use_azure: 
-        client = aoai_client(args.azure_config)
-    else:
-        client = oai_client()
+    #if args.use_azure: 
+       # client = aoai_client(args.azure_config)
+    #else:
+     #   client = oai_client()
+    client = ollama_client()
     return args
 
 
